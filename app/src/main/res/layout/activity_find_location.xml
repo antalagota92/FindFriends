@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_first_app"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.datm.agota.findyourfriends.FindLocation">
+
+    <TextView
+        android:text="Your location is:"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/locationLabel"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_marginLeft="24dp"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="128dp"
+        android:textStyle="normal|bold" />
+
+    <TextView
+        android:text="-"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/locationField"
+        android:layout_alignBaseline="@+id/locationLabel"
+        android:layout_alignBottom="@+id/locationLabel"
+        android:layout_toRightOf="@+id/refreshLocationButton"
+        android:layout_toEndOf="@+id/refreshLocationButton"
+        android:layout_marginLeft="28dp"
+        android:layout_marginStart="28dp" />
+
+    <Button
+        android:text="Refresh location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/refreshLocationButton"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:textStyle="normal|bold"
+        android:textSize="14sp"
+        android:elevation="9dp" />
+</RelativeLayout>
