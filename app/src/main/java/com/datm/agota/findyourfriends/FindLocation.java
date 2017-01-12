@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
+import static android.R.attr.name;
 import static com.datm.agota.findyourfriends.R.id.refreshLocationButton;
 import static com.datm.agota.findyourfriends.R.layout.activity_find_location;
 
@@ -20,6 +21,7 @@ public class FindLocation extends AppCompatActivity {
         setContentView(activity_find_location);
 
         setButtonsForMyFriends();
+        setAllButtonForAllFriends();
     }
 
     protected void setButtonsForMyFriends() {
@@ -45,6 +47,26 @@ public class FindLocation extends AppCompatActivity {
 
             layout.addView(btn);
         }
+    }
+
+    protected void setAllButtonForAllFriends() {
+        LinearLayout layout = (LinearLayout) findViewById(R.id.activity_first_app);
+        layout.setOrientation(LinearLayout.VERTICAL);
+            Button btn = new Button(this);
+
+            btn.setText("All");
+            btn.setHeight(150);
+            btn.setWidth(150);
+
+            btn.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    Intent i = new Intent(FindLocation.this, MapsActivity.class);
+                    i.putExtra("name", "all");
+                    startActivity(i);
+                }
+            });
+
+            layout.addView(btn);
     }
 
 }

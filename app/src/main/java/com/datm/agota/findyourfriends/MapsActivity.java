@@ -10,6 +10,8 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 
+import static com.datm.agota.findyourfriends.R.id.map;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
@@ -21,7 +23,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+                .findFragmentById(map);
         mapFragment.getMapAsync(this);
 
         final Bundle extras = getIntent().getExtras();
@@ -44,11 +46,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-
-        // Add a marker in Sydney and move the camera
-        LatLng markerToPut = getCoordinatesForAFriendName();
-        mMap.addMarker(new MarkerOptions().position(markerToPut).title(name));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(markerToPut));
+        if (name.equalsIgnoreCase("all")) {
+            putAllFriendsOnMap();
+        } else {
+            LatLng markerToPut = getCoordinatesForAFriendName();
+            mMap.addMarker(new MarkerOptions().position(markerToPut).title(name));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(markerToPut));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
+        }
     }
 
     public LatLng getCoordinatesForAFriendName() {
@@ -60,5 +65,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
         return coordinates;
+    }
+
+    public void putAllFriendsOnMap() {
+        Friend[] myFriends = FriendContainer.getFriends();
+
+        for (int i = 0; i < myFriends.length; i++) {
+            mMap.addMarker(new MarkerOptions().position(myFriends[i].getLatLng()).title(myFriends[i].getName()));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(myFriends[i].getLatLng()));
+            mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
+        }
     }
 }
