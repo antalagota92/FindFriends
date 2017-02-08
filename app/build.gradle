@@ -21,6 +21,7 @@ android {
         // Enabling multidex support.
         multiDexEnabled true
     }
+    useLibrary  'org.apache.http.legacy'
 }
 
 dependencies {

@@ -1,72 +1,98 @@
 package com.datm.agota.findyourfriends;
 
+import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 
 import com.datm.agota.findyourfriends.containers.FriendContainer;
 import com.datm.agota.findyourfriends.containers.PubContainer;
 import com.datm.agota.findyourfriends.domain.Friend;
 import com.datm.agota.findyourfriends.domain.Pub;
+import com.datm.agota.findyourfriends.util.directions.DirectionResult;
+import com.datm.agota.findyourfriends.util.directions.DirectionTask;
+import com.datm.agota.findyourfriends.util.directions.GoogleMapsDirection;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.maps.CameraUpdate;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
+import java.util.HashMap;
 import java.util.List;
 
 import static com.datm.agota.findyourfriends.R.id.map;
 import static com.datm.agota.findyourfriends.containers.FriendContainer.getFriends;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback, LocationListener {
 
-    private GoogleMap mMap;
+    private GoogleMap googleMap;
     private String name;
+    private Location myLocation;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(map);
-        mapFragment.getMapAsync(this);
-
         final Bundle extras = getIntent().getExtras();
         if (extras != null) {
             this.name = extras.getString("name");
         }
-
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(map);
+        mapFragment.getMapAsync(this);
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
+    protected void onResume() {
+        super.onResume();
+        initializeMap();
+    }
 
-        if (name.equalsIgnoreCase("all")) {
-            putAllFriendsOnMap();
-        } else {
-            LatLng markerToPut = getCoordinatesForAFriendName(name);
-            mMap.addMarker(new MarkerOptions().position(markerToPut).title(name).snippet("Closest pub is " + getClosestPubToLatLong(markerToPut).getName()));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(markerToPut));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
+    private void initializeMap() {
+
+        if (googleMap != null) {
+            if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                    && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            googleMap.clear();
         }
 
-        putAllPubsOnMap();
+        if (googleMap != null) {
+
+            if (name.equalsIgnoreCase("all")) {
+                putAllFriendsOnMap();
+            } else {
+                LatLng markerToPut = getCoordinatesForAFriendName(name);
+                Pub closestPubToFriend = getClosestPubToLatLong(markerToPut);
+                this.googleMap.addMarker(new MarkerOptions().position(markerToPut).title(name).snippet("Closest pub is " + closestPubToFriend.getName()));
+                drawDirections(closestPubToFriend.getLatLng(), closestPubToFriend.getName());
+            }
+
+            putAllPubsOnMap();
+        }
     }
 
+    private void drawDirections(final LatLng toPos, final String toName) {
+        LatLng myPos = new LatLng(46.756963, 23.596411);
+
+        if (this.myLocation != null) {
+            myPos = new LatLng(this.myLocation.getLatitude(), this.myLocation.getLongitude());
+        }
+
+        final DirectionTask asyncTask = new DirectionTask(this, myPos, toPos, GoogleMapsDirection.MODE_WALKING, toName);
+        asyncTask.execute(new HashMap<String, String>());
+    }
 
     public LatLng getCoordinatesForAFriendName(final String theName) {
         List<Friend> myFriends = getFriends();
@@ -82,23 +108,23 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void putAllFriendsOnMap() {
         List<Friend> myFriends = getFriends();
 
+        final Pub closestPubToAllFriends = getClosestPubToAllFriends();
         for (Friend friend : myFriends) {
             final String friendName = friend.getName();
-            mMap.addMarker(new MarkerOptions().position(friend.getLatLng()).title(friendName)
-                    .snippet("Closest pub to all friends is " + getClosestPubToAllFriends().getName()));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(friend.getLatLng()));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
+            googleMap.addMarker(new MarkerOptions().position(friend.getLatLng()).title(friendName)
+                    .snippet("Closest pub to all friends is " + closestPubToAllFriends.getName()));
+            googleMap.moveCamera(CameraUpdateFactory.newLatLng(friend.getLatLng()));
+            googleMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
         }
+        drawDirections(closestPubToAllFriends.getLatLng(), closestPubToAllFriends.getName());
     }
 
     public void putAllPubsOnMap() {
         List<Pub> myPubs = PubContainer.getPubs();
 
         for (Pub pub : myPubs) {
-            mMap.addMarker(new MarkerOptions().position(pub.getLatLng()).title(pub.getName()).icon(BitmapDescriptorFactory
+            googleMap.addMarker(new MarkerOptions().position(pub.getLatLng()).title(pub.getName()).icon(BitmapDescriptorFactory
                     .defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(pub.getLatLng()));
-            mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
         }
     }
 
@@ -143,5 +169,39 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         location.setLatitude(latLng.latitude);
         location.setLongitude(latLng.longitude);
         return location;
+    }
+
+    public void handleGetDirectionsResult(final DirectionResult directionResult) {
+
+        final PolylineOptions rectLine = new PolylineOptions().width(5).color(Color.GREEN);
+        // move camera to zoom on map
+        final LatLngBounds.Builder builder = new LatLngBounds.Builder();
+        for (int i = 0; i < directionResult.getDirectionPoints().size(); i++) {
+            rectLine.add(directionResult.getDirectionPoints().get(i));
+            builder.include(directionResult.getDirectionPoints().get(i));
+        }
+
+        googleMap.addMarker(new MarkerOptions().position(directionResult.getDirectionPoints().get(0)).title("Me").icon(BitmapDescriptorFactory
+                .defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+        googleMap.addPolyline(rectLine);
+        // move camera to zoom on map
+        LatLngBounds bounds = builder.build();
+        // bound of points and offset from edges in pixels
+        CameraUpdate cu = CameraUpdateFactory.newLatLngBounds(bounds, 200, 200, 20);
+        googleMap.moveCamera(cu);
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(directionResult.getDirectionPoints().get(0),
+                13));
+
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        this.googleMap = googleMap;
+        initializeMap();
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        this.myLocation = location;
     }
 }
