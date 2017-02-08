@@ -1,35 +1,25 @@
 package com.datm.agota.findyourfriends;
 
-import android.content.pm.PackageManager;
-import android.content.res.AssetManager;
-import android.location.Criteria;
 import android.location.Location;
-import android.location.LocationManager;
-import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
-import android.support.v4.content.ContextCompat;
-import android.widget.Toast;
+import android.support.v4.app.FragmentActivity;
 
-import com.google.android.gms.maps.CameraUpdate;
+import com.datm.agota.findyourfriends.containers.FriendContainer;
+import com.datm.agota.findyourfriends.containers.PubContainer;
+import com.datm.agota.findyourfriends.domain.Friend;
+import com.datm.agota.findyourfriends.domain.Pub;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
-import org.xml.sax.SAXException;
+import java.util.List;
 
-import java.io.IOException;
-import java.util.HashMap;
-
-import javax.xml.parsers.ParserConfigurationException;
-
-import static android.R.attr.direction;
-import static com.datm.agota.findyourfriends.FriendContainer.getFriends;
 import static com.datm.agota.findyourfriends.R.id.map;
+import static com.datm.agota.findyourfriends.containers.FriendContainer.getFriends;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -68,8 +58,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (name.equalsIgnoreCase("all")) {
             putAllFriendsOnMap();
         } else {
-            LatLng markerToPut = getCoordinatesForAFriendName();
-            mMap.addMarker(new MarkerOptions().position(markerToPut).title(name));
+            LatLng markerToPut = getCoordinatesForAFriendName(name);
+            mMap.addMarker(new MarkerOptions().position(markerToPut).title(name).snippet("Closest pub is " + getClosestPubToLatLong(markerToPut).getName()));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(markerToPut));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
         }
@@ -77,35 +67,81 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         putAllPubsOnMap();
     }
 
-    public LatLng getCoordinatesForAFriendName() {
-        Friend[] myFriends = getFriends();
+
+    public LatLng getCoordinatesForAFriendName(final String theName) {
+        List<Friend> myFriends = getFriends();
         LatLng coordinates = new LatLng(0, 0);
-        for (int i = 0; i < myFriends.length; i++) {
-            if (myFriends[i].getName().contentEquals(name)) {
-                coordinates = myFriends[i].getLatLng();
+        for (Friend friend : myFriends) {
+            if (friend.getName().contentEquals(theName)) {
+                coordinates = friend.getLatLng();
             }
         }
         return coordinates;
     }
 
     public void putAllFriendsOnMap() {
-        Friend[] myFriends = getFriends();
+        List<Friend> myFriends = getFriends();
 
-        for (int i = 0; i < myFriends.length; i++) {
-            mMap.addMarker(new MarkerOptions().position(myFriends[i].getLatLng()).title(myFriends[i].getName()));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(myFriends[i].getLatLng()));
+        for (Friend friend : myFriends) {
+            final String friendName = friend.getName();
+            mMap.addMarker(new MarkerOptions().position(friend.getLatLng()).title(friendName)
+                    .snippet("Closest pub to all friends is " + getClosestPubToAllFriends().getName()));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(friend.getLatLng()));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
         }
     }
 
     public void putAllPubsOnMap() {
-        Pub[] myPubs = PubContainer.getPubs();
+        List<Pub> myPubs = PubContainer.getPubs();
 
-        for (int i = 0; i < myPubs.length; i++) {
-            mMap.addMarker(new MarkerOptions().position(myPubs[i].getLatLng()).title(myPubs[i].getName()).icon(BitmapDescriptorFactory
+        for (Pub pub : myPubs) {
+            mMap.addMarker(new MarkerOptions().position(pub.getLatLng()).title(pub.getName()).icon(BitmapDescriptorFactory
                     .defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(myPubs[i].getLatLng()));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(pub.getLatLng()));
             mMap.animateCamera(CameraUpdateFactory.zoomTo(12.0f));
         }
+    }
+
+    private Pub getClosestPubToLatLong(LatLng latLng) {
+        final Location friendLocation = getLocation(latLng, name);
+        final List<Pub> allPubs = PubContainer.getPubs();
+        Pub closestPub = null;
+        float minDistance = Float.MAX_VALUE;
+        for (Pub pub : allPubs) {
+            Location pubLocation = getLocation(pub.getLatLng(), pub.getName());
+            float distance = friendLocation.distanceTo(pubLocation);
+            if (distance < minDistance) {
+                closestPub = pub;
+                minDistance = distance;
+            }
+        }
+        return closestPub;
+    }
+
+    private Pub getClosestPubToAllFriends() {
+        final List<Friend> allFriends = FriendContainer.getFriends();
+        final List<Pub> allPubs = PubContainer.getPubs();
+        Pub closestPub = null;
+        float minTotalDistance = Float.MAX_VALUE;
+        for (Pub pub : allPubs) {
+            float totalDistanceToPub = 0;
+            for (Friend friend : allFriends) {
+                final Location friendLocation = getLocation(friend.getLatLng(), friend.getName());
+                Location pubLocation = getLocation(pub.getLatLng(), pub.getName());
+                totalDistanceToPub += friendLocation.distanceTo(pubLocation);
+            }
+            if (totalDistanceToPub < minTotalDistance) {
+                closestPub = pub;
+                minTotalDistance = totalDistanceToPub;
+            }
+        }
+        return closestPub;
+    }
+
+    private Location getLocation(LatLng latLng, String name) {
+        final Location location = new Location(name);
+        location.setLatitude(latLng.latitude);
+        location.setLongitude(latLng.longitude);
+        return location;
     }
 }

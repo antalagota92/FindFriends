@@ -1,5 +1,6 @@
-package com.datm.agota.findyourfriends;
+package com.datm.agota.findyourfriends.containers;
 
+import com.datm.agota.findyourfriends.domain.Pub;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.util.ArrayList;
@@ -10,7 +11,7 @@ import java.util.List;
  */
 
 public class PubContainer {
-    public static Pub[] getPubs() {
+    public static List<Pub> getPubs() {
         List<Pub> pubs = new ArrayList<>();
 
         Pub pub1 = new Pub(new LatLng(46.78, 23.54), "Klausen");
@@ -21,8 +22,6 @@ public class PubContainer {
         pubs.add(pub2);
         pubs.add(pub3);
 
-        Pub[] pubArray = pubs.toArray(new Pub[0]);
-
-        return pubArray;
+        return pubs;
     }
 }
